@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Agro-Farm Development Project</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Icons & Charts -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PDF + DOM capture -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <img id="orgLogo" class="logo-img hidden" alt="Logo" />
+      <span class="logo" id="fallbackEmoji">🌱</span>
+      <div class="brand-text">
+        <h1 id="orgName">Agro-Farm Development Project</h1>
+        <p id="orgTagline">Boost capacity, resource efficiency & profitability</p>
+      </div>
+      <span id="roleBadge" class="role-badge">Guest</span>
+    </div>
+
+    <div class="header-actions">
+      <button id="themeToggle" class="btn icon" aria-label="Toggle theme" title="Toggle theme">
+        <i data-lucide="sun"></i>
+      </button>
+
+      <button id="btnPDF" class="btn outline" data-action="pdf:generate" title="Generate PDF report">
+        <i data-lucide="printer"></i><span>PDF Report</span>
+      </button>
+
+      <div class="file-actions" data-action="data:exportimport">
+        <button id="exportBtn" class="btn" title="Export JSON data"><i data-lucide="download"></i><span>Export</span></button>
+        <label class="btn outline" for="importFile" title="Import JSON data"><i data-lucide="upload"></i><span>Import</span></label>
+        <input id="importFile" type="file" accept="application/json" hidden />
+      </div>
+
+      <button id="settingsBtn" class="btn outline" data-action="admin:branding" title="Branding & Org Settings">
+        <i data-lucide="wand-2"></i><span>Branding</span>
+      </button>
+
+      <button id="loginBtn" class="btn primary" title="Sign in">
+        <i data-lucide="log-in"></i><span id="loginBtnText">Login</span>
+      </button>
+      <button id="logoutBtn" class="btn danger outline hidden" title="Sign out">
+        <i data-lucide="log-out"></i><span>Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="container" id="captureMain">
+    <!-- CONFIG -->
+    <section class="card">
+      <header class="card-header">
+        <h2>Project Configuration</h2>
+        <p>Select focus area to load tailored assumptions and targets.</p>
+      </header>
+      <div class="grid grid-3">
+        <div class="field">
+          <label for="projectType">Focus Area</label>
+          <select id="projectType">
+            <option value="sustainable">Sustainable Agriculture</option>
+            <option value="diversification">Crop Diversification</option>
+            <option value="automation">Farm Automation</option>
+            <option value="organic">Organic Farming</option>
+            <option value="agroforestry">Agroforestry</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="farmArea">Farm Area (ha)</label>
+          <input id="farmArea" type="number" min="0" step="0.1" value="75" class="can-edit" />
+        </div>
+
+        <div class="field">
+          <label for="region">Region/Climate</label>
+          <select id="region">
+            <option value="temperate">Temperate</option>
+            <option value="tropical">Tropical</option>
+            <option value="arid">Arid</option>
+            <option value="monsoon" selected>Monsoon</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="applyPreset" class="btn primary" data-action="preset:apply">
+          <i data-lucide="settings-2"></i><span>Apply Scenario Preset</span>
+        </button>
+        <button id="resetAll" class="btn danger outline" data-action="admin:reset">
+          <i data-lucide="refresh-ccw"></i><span>Reset</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- KPIs -->
+    <section class="grid grid-4" id="kpiSection">
+      <div class="kpi card">
+        <div class="kpi-top">
+          <span class="kpi-icon" aria-hidden="true">🌾</span>
+          <span class="kpi-title">Yield</span>
+        </div>
+        <div class="kpi-value"><span id="kpiYield">—</span> t/ha</div>
+        <div class="kpi-sub">vs baseline <span id="kpiYieldDelta">0%</span></div>
+      </div>
+
+      <div class="kpi card">
+        <div class="kpi-top">
+          <span class="kpi-icon">💧</span>
+          <span class="kpi-title">Water Use</span>
+        </div>
+        <div class="kpi-value"><span id="kpiWater">—</span> m³/ha</div>
+        <div class="kpi-sub">change <span id="kpiWaterDelta">0%</span></div>
+      </div>
+
+      <div class="kpi card">
+        <div class="kpi-top">
+          <span class="kpi-icon">🧮</span>
+          <span class="kpi-title">Cost</span>
+        </div>
+        <div class="kpi-value">₹ <span id="kpiCost">—</span> /ha</div>
+        <div class="kpi-sub">opex incl. inputs</div>
+      </div>
+
+      <div class="kpi card">
+        <div class="kpi-top">
+          <span class="kpi-icon">💹</span>
+          <span class="kpi-title">Profit</span>
+        </div>
+        <div class="kpi-value">₹ <span id="kpiProfit">—</span> /ha</div>
+        <div class="kpi-sub">net of costs</div>
+      </div>
+    </section>
+
+    <!-- CHARTS -->
+    <section class="grid grid-2">
+      <div class="card">
+        <header class="card-header">
+          <h3>Annual Production Trend</h3>
+          <p>Yield per hectare across 6 seasons</p>
+        </header>
+        <canvas id="trendChart" height="140"></canvas>
+      </div>
+
+      <div class="card">
+        <header class="card-header">
+          <h3>Resource Use Breakdown</h3>
+          <p>Water, Energy, Fertilizer, Labor</p>
+        </header>
+        <canvas id="resourceChart" height="140"></canvas>
+      </div>
+    </section>
+
+    <!-- TASKS & EQUIPMENT -->
+    <section class="grid grid-2" id="listsSection">
+      <div class="card list-card">
+        <header class="card-header">
+          <h3>Farm Tasks</h3>
+          <p>Plan, track & complete operational tasks</p>
+        </header>
+        <div class="add-row" data-action="task:add">
+          <input id="taskInput" type="text" placeholder="e.g., Install drip irrigation in Field A" class="can-edit" />
+          <button id="addTask" class="btn"><i data-lucide="plus"></i><span>Add</span></button>
+        </div>
+        <ul id="taskList" class="list"></ul>
+      </div>
+
+      <div class="card list-card">
+        <header class="card-header">
+          <h3>Equipment & Automation</h3>
+          <p>Track assets and IoT deployments</p>
+        </header>
+        <div class="add-row" data-action="equip:add">
+          <input id="equipInput" type="text" placeholder="e.g., Soil moisture sensors x10" class="can-edit" />
+          <button id="addEquip" class="btn"><i data-lucide="plus"></i><span>Add</span></button>
+        </div>
+        <ul id="equipList" class="list"></ul>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section class="card">
+      <header class="card-header">
+        <h3>Project Notes</h3>
+        <p>Observations, risks, and infrastructure updates</p>
+      </header>
+      <textarea id="notes" rows="6" placeholder="Write notes…" data-action="notes:edit"></textarea>
+    </section>
+
+    <!-- AUDIT (Managers/Admin only) -->
+    <section class="card" data-action="audit:view">
+      <header class="card-header">
+        <h3>Audit Log</h3>
+        <p>Key privileged actions (local)</p>
+      </header>
+      <ul id="auditList" class="list"></ul>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <small>© <span id="year"></span> <span id="orgNameFooter">Agro-Farm Dev</span> • Built for sustainable, efficient, and profitable farming</small>
+  </footer>
+
+  <!-- LOGIN MODAL -->
+  <div id="loginModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="loginTitle">Login</h3>
+        <button class="btn icon modal-close" data-close-login aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+      <div class="grid grid-1">
+        <div class="field">
+          <label for="loginName">Your Name</label>
+          <input id="loginName" type="text" placeholder="e.g., Aisha Khan" />
+        </div>
+        <div class="field">
+          <label for="loginRole">Role</label>
+          <select id="loginRole">
+            <option value="viewer">Viewer (read-only)</option>
+            <option value="field">Field Officer (complete tasks)</option>
+            <option value="manager">Manager (edit/apply/export)</option>
+            <option value="admin">Admin (full control)</option>
+          </select>
+        </div>
+        <div class="field" id="adminPassWrap" style="display:none;">
+          <label for="adminPass">Admin Passcode</label>
+          <input id="adminPass" type="password" placeholder="Enter admin passcode" />
+          <small class="muted">Default: <code>admin123</code> (change in Branding → Security)</small>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="doLogin" class="btn primary"><i data-lucide="log-in"></i><span>Sign In</span></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS / BRANDING MODAL -->
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="settingsTitle">Branding & Organization Settings</h3>
+        <button class="btn icon modal-close" data-close-settings aria-label="Close"><i data-lucide="x"></i></button>
+      </div>
+
+      <div class="grid grid-2">
+        <div class="field">
+          <label for="brandName">Organization Name</label>
+          <input id="brandName" type="text" placeholder="e.g., GreenHarvest Co-op" />
+        </div>
+        <div class="field">
+          <label for="brandTagline">Tagline (optional)</label>
+          <input id="brandTagline" type="text" placeholder="e.g., Growing smarter, together" />
+        </div>
+        <div class="field">
+          <label for="brandColor">Brand Color</label>
+          <input id="brandColor" type="color" value="#38bdf8" />
+        </div>
+        <div class="field">
+          <label for="logoUrl">Logo URL (PNG/SVG)</label>
+          <input id="logoUrl" type="url" placeholder="https://example.com/logo.png" />
+        </div>
+        <div class="field">
+          <label for="adminCode">Admin Passcode</label>
+          <input id="adminCode" type="text" placeholder="admin123" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="saveBranding" class="btn primary"><i data-lucide="save"></i><span>Save</span></button>
+        <button id="clearBranding" class="btn danger outline"><i data-lucide="trash-2"></i><span>Clear</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
